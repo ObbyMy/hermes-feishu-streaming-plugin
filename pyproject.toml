@@ -9,7 +9,7 @@ description = "Standalone migration plugin for Hermes Feishu/Weixin streaming-ca
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Hermes Agent" }]
-license = { text = "MIT" }
+license = "MIT"
 dependencies = []
 
 [project.optional-dependencies]
