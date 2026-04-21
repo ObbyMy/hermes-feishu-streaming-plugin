@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-feishu-streaming-plugin"
-version = "0.1.0"
-description = "Standalone migration plugin for Hermes Feishu/Weixin streaming-card fixes"
+version = "0.2.0"
+description = "Transferable skill repository and CLI for Hermes Feishu/Weixin streaming-card migration"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Hermes Agent" }]
@@ -17,6 +17,7 @@ dev = ["pytest>=8.0,<9"]
 
 [project.scripts]
 hermes-feishu-plugin = "hermes_feishu_streaming_plugin.cli:main"
+hermes-feishu-skillkit = "hermes_feishu_streaming_plugin.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

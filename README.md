@@ -1,243 +1,483 @@
-# Hermes Feishu Streaming Plugin
+# Hermes Feishu Streaming Skill Kit
 
-> **Bilingual standalone migration toolkit for Hermes Feishu / Weixin streaming fixes**  
-> **Hermes 飞书 / 微信流式消息修复的独立双语迁移工具包**
+> A transferable skill repository for the **OpenClaw-style optimized Feishu streaming card workflow** in Hermes Agent.
+>
+> 一个可迁移的技能仓库，用于把 **OpenClaw 风格优化后的飞书流式卡片消息方案** 迁移到其他 Hermes Agent 实例。
 
-A modern, production-friendly plugin project that packages the verified Feishu/Weixin streaming gateway migration into a reusable Python distribution.
-
-这是一个面向生产环境的现代化独立插件项目，用于把已经验证过的 Hermes 飞书 / 微信流式网关迁移方案打包成可复用的 Python 发行包。
-
----
-
-## ✨ Highlights | 核心亮点
-
-- **Standalone packaging** — install and distribute the migration kit without copying an entire working repository.  
-  **独立封装**——无需复制整个工作仓库，即可安装和分发迁移工具包。
-- **Verified migration assets** — includes modified source files, regression tests, patch references, and implementation notes.  
-  **已验证迁移资产**——内置修改后的源码文件、回归测试、补丁参考和实施说明。
-- **Simple CLI workflow** — inspect, export, and apply the bundle with a small command surface.  
-  **简洁 CLI 流程**——通过少量命令即可查看、导出并应用迁移包。
-- **Repo-friendly structure** — designed for GitHub publishing, versioning, and future iterative maintenance.  
-  **仓库友好结构**——适合发布到 GitHub、版本管理以及后续持续维护。
+<p align="center">
+  <a href="#中文说明">中文</a> ·
+  <a href="#english">English</a>
+</p>
 
 ---
 
-## 🧭 What this project is for | 这个项目解决什么问题
+# 中文说明
 
-When the Hermes Feishu / Weixin gateway needs streaming-card behavior fixes, manual patch transfer is error-prone and hard to repeat.
+## 快速跳转
 
-当 Hermes 的飞书 / 微信网关需要修复流式卡片行为时，手工迁移补丁通常容易出错，也难以重复执行。
+- [项目定位](#项目定位)
+- [这个仓库解决什么问题](#这个仓库解决什么问题)
+- [我到底改了 Hermes 哪些源码](#我到底改了-hermes-哪些源码)
+- [如何在 Hermes 更新后重新定位这些修改点](#如何在-hermes-更新后重新定位这些修改点)
+- [仓库结构](#仓库结构)
+- [命令行用法](#命令行用法)
+- [典型迁移流程](#典型迁移流程)
+- [验证方式](#验证方式)
+- [打包与发布](#打包与发布)
 
-This project turns that migration into a portable plugin-style package so you can:
+## 项目定位
 
-本项目把该迁移方案整理成可移植的插件式工具包，使你可以：
+这不是“一个普通插件示例仓库”，而是一个**可交付、可迁移、可复用的技能仓库**。
 
-1. inspect the bundled manifest before changes are applied;  
-   在真正修改前先检查内置文件清单；
-2. export the full migration kit for review or archival;  
-   导出完整迁移包以便审阅或归档；
-3. apply the bundled files directly into a target Hermes repository.  
-   将内置文件直接应用到目标 Hermes 仓库中。
+它把我在 Hermes Agent 中为飞书 / 微信网关做过的这套关键优化完整沉淀下来：
 
----
+1. **飞书单卡片流式输出**：避免“小预览气泡 + 工具进度消息 + 最终消息”分裂成多条杂乱消息。  
+2. **工具进度嵌入当前流式卡片**：工具调用状态直接显示在当前消息卡片里。  
+3. **Weixin 重复气泡抑制**：在不支持真正编辑的通道上关闭重复预览/进度气泡。  
+4. **session/context 通知卡片化**：把 session reset / context pressure 等提示也纳入统一风格。  
+5. **升级可定位**：不仅保存改后的文件，还提供“以后 Hermes 升级了该去哪里改”的定位清单和 CLI。  
 
-## 📦 Included in the bundle | 内含内容
+## 这个仓库解决什么问题
 
-The package currently bundles the following migration assets:
+如果你只是拷贝一份补丁，短期能用；但一旦上游 Hermes 更新：
 
-当前软件包内置以下迁移资产：
+- 你会忘记到底改过哪些文件；
+- 你会忘记为什么要这么改；
+- 你会不知道新版源码里应该去哪里续改；
+- 你会很难把同一套体验稳定复用到其他实例。
 
-- updated Hermes gateway source files  
-  更新后的 Hermes 网关源码文件
-- Feishu-related regression tests  
-  飞书相关回归测试
-- migration patch reference files  
-  迁移补丁参考文件
-- verification and implementation notes  
-  验证说明与实施文档
-- metadata contract documentation for streaming messages  
-  流式消息元数据约定文档
-- a Python CLI for export / apply operations  
-  用于导出 / 应用操作的 Python CLI
+这个仓库就是为了解决这些问题：
 
----
+- **资产化**：把源码修改、测试、文档、补丁、技能说明统一封装；
+- **可迁移**：可以导出 bundle，交给别的 Hermes 实例直接复用；
+- **可定位**：通过 `locators` / `locate` 命令快速定位新版 Hermes 中的改动触点；
+- **可审计**：清楚记录“改了什么”“为什么改”“怎么验证”。
 
-## 🗂 Project structure | 项目结构
+## 我到底改了 Hermes 哪些源码
+
+核心改动集中在下面这些文件：
+
+- `gateway/platforms/feishu.py`
+- `gateway/run.py`
+- `gateway/stream_consumer.py`
+- `gateway/config.py`
+- `gateway/display_config.py`
+- `hermes_cli/gateway.py`
+- 对应的 `tests/gateway/*`、`tests/run_agent/*`、`tests/agent/*`
+
+详细说明见：
+
+- `references/modified-files.md`
+- `references/upgrade-locator.md`
+- `references/modification-map.json`
+
+其中最关键的三处是：
+
+### 1) `gateway/platforms/feishu.py`
+
+这里决定飞书消息到底怎么发、怎么编辑、什么时候走 interactive card、失败时怎样 fallback。
+
+这部分修改主要负责：
+
+- 打开 Feishu 的消息编辑能力；
+- 引入 `_hermes_stream` metadata 协议；
+- 让流式消息优先走单卡片路径；
+- 让 metadata-only 更新也能触发 edit；
+- 处理 interactive card 失败回退；
+- 保证附件+说明走“先文本后文件”的发送策略。
+
+### 2) `gateway/run.py`
+
+这里负责把 agent commentary / stream delta / tool progress 真正接到平台发送逻辑上。
+
+这部分修改主要负责：
+
+- 定义 tool progress 的传输模式：`embedded` / `standalone` / `off`；
+- 在 Feishu 上把工具进度嵌入当前 stream card；
+- 在 Weixin 上关闭会造成重复气泡的路径；
+- 给 session notice / context pressure 注入 Feishu 所需 metadata。
+
+### 3) `gateway/stream_consumer.py`
+
+这里负责“一个正在流式更新的消息”在运行期如何增量刷新。
+
+这部分修改主要负责：
+
+- 支持 `on_status()` 的临时状态刷新；
+- 支持 **只有 metadata 变化也要触发 edit**；
+- 支持 `\u200b` placeholder 让 status-only flush 生效；
+- 支持 paragraph boundary / inline commentary；
+- 避免对 placeholder 错误追加流式光标。
+
+## 如何在 Hermes 更新后重新定位这些修改点
+
+这是这个仓库和“普通补丁仓库”最大的区别之一。
+
+### 方法一：查看定位清单
+
+```bash
+python -m hermes_feishu_streaming_plugin locators
+```
+
+这个命令会输出 JSON，列出每个目标文件、用途、以及应该搜索的稳定锚点，比如：
+
+- `class FeishuAdapter(BasePlatformAdapter):`
+- `async def send(`
+- `async def edit_message(`
+- `progress_transport`
+- `GatewayStreamConsumer(`
+- `_STATUS_ONLY_PLACEHOLDER = "\u200b"`
+
+### 方法二：直接扫描目标 Hermes 仓库
+
+```bash
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
+```
+
+它会返回：
+
+- 哪些文件存在；
+- 哪些文件是完整匹配；
+- 哪些文件只匹配到一部分锚点；
+- 每个锚点在哪一行出现。
+
+这对下面两种情况尤其有用：
+
+1. **上游升级后文件还在，但行号变了**；
+2. **上游重构后只能找到部分结构，需要手工续改**。
+
+### 方法三：结合 bundle 内文档手工续改
+
+优先顺序建议：
+
+1. 先跑 `locate`
+2. 再看 `references/modified-files.md`
+3. 再对照 `references/migration.patch`
+4. 最后用 `files/` 目录里的目标文件作为参考真值
+
+## 仓库结构
 
 ```text
 hermes-feishu-streaming-plugin/
+├── README.md
+├── pyproject.toml
 ├── src/hermes_feishu_streaming_plugin/
-│   ├── bundle.py            # Bundle manifest + export helpers
-│   ├── installer.py         # Apply bundled files into a Hermes repo
-│   ├── cli.py               # Command-line interface
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── bundle.py
+│   ├── cli.py
+│   ├── installer.py
+│   ├── locator.py
 │   └── assets/
 │       └── hermes-feishu-weixin-streaming-migration-kit/
-│           ├── files/       # Source files and tests to copy into Hermes
-│           ├── references/  # Patch, verification, migration notes
+│           ├── SKILL.md
 │           ├── README.md
-│           └── SKILL.md
+│           ├── files/
+│           └── references/
+│               ├── modified-files.md
+│               ├── upgrade-locator.md
+│               ├── modification-map.json
+│               ├── migration.patch
+│               ├── migration-steps.md
+│               ├── verification.md
+│               └── feishu-format-calls.md
 ├── tests/
-├── dist/
-├── pyproject.toml
-└── README.md
+└── .github/workflows/ci.yml
 ```
 
----
+## 命令行用法
 
-## 🚀 Quick start | 快速开始
-
-### 1) Install | 安装
+### 安装
 
 ```bash
 pip install -e .[dev]
 ```
 
-### 2) View the manifest | 查看清单
+### 查看 bundle 文件清单
 
 ```bash
 python -m hermes_feishu_streaming_plugin manifest
 ```
 
-### 3) Export the bundled migration kit | 导出迁移包
+### 导出完整迁移包
 
 ```bash
 python -m hermes_feishu_streaming_plugin export --output-dir ./dist
 ```
 
-### 4) Apply to a Hermes repository | 应用到 Hermes 仓库
+### 输出“升级定位清单”
 
 ```bash
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo
+python -m hermes_feishu_streaming_plugin locators
 ```
 
-### 5) Dry run before copy | 复制前先演练
+### 扫描目标 Hermes 仓库中的改动触点
 
 ```bash
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo --dry-run
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
 ```
 
----
-
-## 🖥 CLI reference | CLI 命令说明
-
-### `manifest`
-Print the bundled file manifest as JSON.  
-以 JSON 形式输出内置文件清单。
+### 应用 bundle 内置文件
 
 ```bash
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent
+```
+
+### 先 dry-run 再复制
+
+```bash
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent --dry-run
+```
+
+## 典型迁移流程
+
+```bash
+# 1) 查看本仓库内置的 bundle 结构
 python -m hermes_feishu_streaming_plugin manifest
-```
 
-### `export --output-dir <dir>`
-Copy the bundled migration kit into a target directory.  
-将内置迁移包复制到指定目录。
+# 2) 扫描目标 Hermes 仓库，确认改动触点还在不在
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
 
-```bash
+# 3) 导出 bundle，便于审阅或打包发给别人
 python -m hermes_feishu_streaming_plugin export --output-dir ./dist
+
+# 4) 先演练复制计划
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent --dry-run
+
+# 5) 正式应用
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent
 ```
 
-### `apply --target <repo> [--dry-run]`
-Copy the bundled files into a target Hermes repository.  
-把内置文件复制到目标 Hermes 仓库。
+## 验证方式
 
-```bash
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo --dry-run
-```
+仓库内已经保存了聚焦回归验证命令，见：
 
----
+- `references/verification.md`
 
-## 🧪 Development | 开发与测试
-
-Install the development dependencies first:
-
-先安装开发依赖：
-
-```bash
-pip install -e .[dev]
-```
-
-Run the test suite:
-
-运行测试：
+本项目自身的测试：
 
 ```bash
 pytest
 ```
 
-Build distribution artifacts if needed:
-
-如需构建发行包：
+构建发行包：
 
 ```bash
 python -m build
 ```
 
+## 打包与发布
+
+这个仓库适合直接作为“技能仓库”发布，因为它同时包含：
+
+- 技能说明 `SKILL.md`
+- 可迁移文件 `files/`
+- 修改说明 `references/modified-files.md`
+- 升级定位清单 `references/upgrade-locator.md`
+- 机器可读定位图 `references/modification-map.json`
+- CLI 工具 `locate / locators / export / apply`
+
 ---
 
-## ✅ Typical workflow | 典型使用流程
+# English
+
+## Quick Links
+
+- [Project Goal](#project-goal)
+- [What Problem This Repo Solves](#what-problem-this-repo-solves)
+- [Which Hermes Source Files Were Actually Changed](#which-hermes-source-files-were-actually-changed)
+- [How to Re-locate the Touchpoints After Hermes Updates](#how-to-re-locate-the-touchpoints-after-hermes-updates)
+- [Repository Layout](#repository-layout)
+- [CLI Usage](#cli-usage)
+- [Typical Migration Workflow](#typical-migration-workflow)
+- [Verification](#verification)
+- [Packaging and Publishing](#packaging-and-publishing)
+
+## Project Goal
+
+This is not just a patch dump.
+
+It is a **transferable skill repository** that packages the OpenClaw-style optimized Feishu streaming-card workflow for Hermes Agent, including:
+
+- the modified source files,
+- the migration patch,
+- the supporting tests,
+- the operational documentation,
+- and a locator CLI for future upstream upgrades.
+
+## What Problem This Repo Solves
+
+A one-off patch is never enough once Hermes evolves.
+
+Without a structured migration repository, you quickly lose track of:
+
+- which files were changed,
+- why those changes existed,
+- where to re-apply the logic after upstream refactors,
+- and how to verify that the UX still behaves correctly.
+
+This repository solves that by turning the work into a reusable artifact:
+
+- **portable** — exportable and shareable across Hermes instances;
+- **inspectable** — documents the exact source touchpoints and intent;
+- **upgradable** — ships locator specs for future Hermes versions;
+- **testable** — keeps the regression scope visible.
+
+## Which Hermes Source Files Were Actually Changed
+
+Primary source touchpoints:
+
+- `gateway/platforms/feishu.py`
+- `gateway/run.py`
+- `gateway/stream_consumer.py`
+- `gateway/config.py`
+- `gateway/display_config.py`
+- `hermes_cli/gateway.py`
+- corresponding gateway / run_agent / display tests
+
+See these bundled references for the detailed breakdown:
+
+- `references/modified-files.md`
+- `references/upgrade-locator.md`
+- `references/modification-map.json`
+
+## How to Re-locate the Touchpoints After Hermes Updates
+
+### 1) Print the locator manifest
 
 ```bash
-# 1. inspect what will be shipped
-python -m hermes_feishu_streaming_plugin manifest
-
-# 2. export the bundle for review
-python -m hermes_feishu_streaming_plugin export --output-dir ./dist
-
-# 3. validate target changes first
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo --dry-run
-
-# 4. perform the actual copy
-python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-repo
+python -m hermes_feishu_streaming_plugin locators
 ```
 
----
+This emits a JSON list of target files plus stable anchor patterns such as:
 
-## 🎯 Use cases | 适用场景
+- `class FeishuAdapter(BasePlatformAdapter):`
+- `async def send(`
+- `async def edit_message(`
+- `progress_transport`
+- `GatewayStreamConsumer(`
+- `_STATUS_ONLY_PLACEHOLDER = "\u200b"`
 
-- packaging a proven Feishu streaming fix into a reusable deliverable  
-  将已验证的飞书流式修复方案打包成可复用交付物
-- shipping migration bundles between environments or teams  
-  在不同环境或团队之间分发迁移包
-- preserving a tested gateway patch set outside the main Hermes repository  
-  在主 Hermes 仓库之外保留一套经过测试的网关补丁
-- preparing a clean public repository for documentation and versioned releases  
-  为文档展示和版本发布准备一个整洁的公共仓库
+### 2) Scan a target Hermes repository
 
----
+```bash
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
+```
 
-## 📌 Notes | 说明
+The report tells you:
 
-- This repository packages **migration assets**, not a full standalone Hermes runtime.  
-  本仓库打包的是**迁移资产**，不是完整独立运行版 Hermes。
-- Always run a dry run and review copied files before applying changes in production.  
-  在生产环境应用修改前，建议先执行 dry run 并审查即将复制的文件。
-- The bundled assets can be versioned and released independently from the main Hermes repository.  
-  内置迁移资产可以独立于主 Hermes 仓库进行版本管理与发布。
+- which files still exist,
+- which files fully match the expected touchpoints,
+- which files only partially match,
+- and which line numbers contain each anchor.
 
----
+That makes future manual merges much easier after upstream churn.
 
-## 🛣 Roadmap | 路线图
+### 3) Finish the merge with the bundled references
 
-- [ ] add release automation for GitHub publishing  
-      增加 GitHub 发布自动化
-- [ ] support selective file application  
-      支持按文件选择性应用
-- [ ] add richer validation output and diff previews  
-      增加更丰富的校验输出与差异预览
-- [ ] publish versioned migration bundles with changelogs  
-      发布带变更日志的版本化迁移包
+Recommended order:
 
----
+1. run `locate`
+2. read `references/modified-files.md`
+3. compare against `references/migration.patch`
+4. use the bundled `files/` tree as the source of truth
 
-## 📄 License | 许可证
+## Repository Layout
 
-MIT License.
+```text
+hermes-feishu-streaming-plugin/
+├── src/hermes_feishu_streaming_plugin/
+│   ├── bundle.py
+│   ├── installer.py
+│   ├── locator.py
+│   ├── cli.py
+│   └── assets/hermes-feishu-weixin-streaming-migration-kit/
+│       ├── SKILL.md
+│       ├── files/
+│       └── references/
+├── tests/
+├── pyproject.toml
+└── README.md
+```
 
----
+## CLI Usage
 
-## 🤝 Contributing | 参与贡献
+Install in editable mode:
 
-Issues and pull requests are welcome. If you plan to publish or adapt this package for your own Hermes deployment workflow, document your changes clearly and keep migration references in sync.
+```bash
+pip install -e .[dev]
+```
 
-欢迎提交 Issue 和 Pull Request。如果你计划将本项目用于自己的 Hermes 部署流程，请清晰记录修改内容，并保持迁移参考资料同步更新。
+Print bundled manifest:
+
+```bash
+python -m hermes_feishu_streaming_plugin manifest
+```
+
+Export the migration bundle:
+
+```bash
+python -m hermes_feishu_streaming_plugin export --output-dir ./dist
+```
+
+Print the locator spec:
+
+```bash
+python -m hermes_feishu_streaming_plugin locators
+```
+
+Locate the migration touchpoints in a Hermes repo:
+
+```bash
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
+```
+
+Apply the bundled files:
+
+```bash
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent
+```
+
+Dry run first:
+
+```bash
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent --dry-run
+```
+
+## Typical Migration Workflow
+
+```bash
+python -m hermes_feishu_streaming_plugin manifest
+python -m hermes_feishu_streaming_plugin locate --target /path/to/hermes-agent
+python -m hermes_feishu_streaming_plugin export --output-dir ./dist
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent --dry-run
+python -m hermes_feishu_streaming_plugin apply --target /path/to/hermes-agent
+```
+
+## Verification
+
+Run the local test suite:
+
+```bash
+pytest
+```
+
+Build distribution artifacts:
+
+```bash
+python -m build
+```
+
+For the original Hermes regression targets, see:
+
+- `references/verification.md`
+
+## Packaging and Publishing
+
+This repository is suitable as a public **skill repository** because it includes:
+
+- the installable `SKILL.md`,
+- the modified files under `files/`,
+- the migration patch,
+- the rationale and touchpoint docs,
+- and a CLI that helps future upgrades find the right code again.

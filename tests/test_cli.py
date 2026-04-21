@@ -28,3 +28,18 @@ def test_cli_export_writes_bundle(tmp_path: Path):
     exported = tmp_path / "hermes-feishu-weixin-streaming-migration-kit"
     assert exported.exists()
     assert (exported / "README.md").exists()
+
+
+def test_cli_locators_outputs_json():
+    result = run_cli("locators")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert any(item["path"] == "gateway/platforms/feishu.py" for item in payload)
+
+
+def test_cli_locate_reports_target(tmp_path: Path):
+    result = run_cli("locate", "--target", str(tmp_path))
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["repo_root"] == str(tmp_path)
+    assert payload["missing_files"] >= 1

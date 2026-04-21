@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .bundle import bundle_manifest, export_bundle
 from .installer import apply_bundle
+from .locator import locate_bundle_targets, locator_manifest_json
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,6 +17,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     export_p = sub.add_parser("export", help="Export the bundled migration kit")
     export_p.add_argument("--output-dir", required=True)
+
+    sub.add_parser("locators", help="Print the file locator manifest as JSON")
+
+    locate_p = sub.add_parser("locate", help="Locate migration touchpoints inside a Hermes repo")
+    locate_p.add_argument("--target", required=True)
 
     apply_p = sub.add_parser("apply", help="Copy bundled files into a Hermes repo")
     apply_p.add_argument("--target", required=True)
@@ -33,6 +39,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == 'export':
         exported = export_bundle(Path(args.output_dir))
         print(str(exported))
+        return 0
+    if args.command == 'locators':
+        print(locator_manifest_json())
+        return 0
+    if args.command == 'locate':
+        print(locate_bundle_targets(Path(args.target)).to_json())
         return 0
     if args.command == 'apply':
         result = apply_bundle(Path(args.target), dry_run=args.dry_run)
