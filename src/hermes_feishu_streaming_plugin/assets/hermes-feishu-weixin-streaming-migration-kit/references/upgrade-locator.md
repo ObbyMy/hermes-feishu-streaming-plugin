@@ -101,6 +101,7 @@ Search for:
 Preserve the outcome:
 
 - Feishu => embedded tool progress
+- Feishu => suppress standalone retry / still-working chatter when the live card is already active
 - Weixin => duplicate path suppressed
 - notice cards => metadata injected
 

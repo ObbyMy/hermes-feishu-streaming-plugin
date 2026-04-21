@@ -3985,6 +3985,70 @@ class GatewayRunner:
         detail = cls._format_long_running_status_detail(activity or {})
         return f"⏳ 仍在处理中（已耗时 {elapsed_minutes} 分钟{detail}）"
 
+    @staticmethod
+    def _should_reset_embedded_status_text(consumer: Any) -> bool:
+        """Return True only before a stream has shown any visible output.
+
+        Feishu's embedded tool-status updates should not wipe an existing card body.
+        Resetting is only useful for the initial status-only card when no streamed
+        text has been shown yet.
+        """
+        return not bool(getattr(consumer, "already_sent", False))
+
+    @classmethod
+    def _should_suppress_feishu_status_notice(
+        cls,
+        platform: Optional[Platform],
+        event_type: str,
+        message: str,
+    ) -> bool:
+        """Suppress transient lifecycle chatter that should stay inside the live card.
+
+        Feishu already has an editable streaming card. Standalone retry / still-working
+        / inactivity-warning bubbles create duplicate noisy messages and can leave the
+        conversation with extra non-card output.
+        """
+        if platform != Platform.FEISHU or event_type == "context_pressure":
+            return False
+        text = str(message or "").strip()
+        if not text:
+            return False
+        noisy_prefixes = (
+            "⏳ Retrying in ",
+            "⏱️ Rate limit reached.",
+            "⏳ 仍在处理中（",
+            "⚠️ 已有 ",
+            "🗜️ Compressed ",
+        )
+        return any(text.startswith(prefix) for prefix in noisy_prefixes)
+
+    def _build_status_notice_payload(
+        self,
+        platform: Optional[Platform],
+        event_type: str,
+        message: str,
+        metadata: Optional[Dict[str, Any]],
+    ) -> tuple[bool, str, Optional[Dict[str, Any]]]:
+        """Normalize gateway status notices before they are sent to the platform."""
+        notice_metadata = dict(metadata or {})
+        notice_content = message
+        if self._should_suppress_feishu_status_notice(platform, event_type, message):
+            return True, notice_content, notice_metadata or None
+        if platform == Platform.FEISHU and event_type == "context_pressure":
+            adapter = self.adapters.get(platform)
+            stream_key = getattr(adapter, "STREAMING_CARD_METADATA_KEY", "_hermes_stream")
+            notice_content = "本轮上下文较长，系统可能会自动整理历史内容。"
+            existing_stream = notice_metadata.get(stream_key)
+            if not isinstance(existing_stream, dict):
+                existing_stream = {}
+            notice_metadata[stream_key] = {
+                **existing_stream,
+                "phase": "completed",
+                "notice_kind": "context_pressure",
+                "notice_text": message,
+            }
+        return False, notice_content, notice_metadata or None
+
     def _session_notice_metadata(
         self,
         event: MessageEvent,
@@ -7518,7 +7582,10 @@ class GatewayRunner:
                         msg = f"{emoji} {tool_name}: \"{preview}\""
                     else:
                         msg = f"{emoji} {tool_name}..."
-                    _embedded_progress_consumer[0].on_status(msg, reset_text=True)
+                    _embedded_progress_consumer[0].on_status(
+                        msg,
+                        reset_text=self._should_reset_embedded_status_text(_embedded_progress_consumer[0]),
+                    )
                 elif event_type == "tool.completed":
                     _embedded_progress_consumer[0].on_status(None)
                 return
@@ -7765,15 +7832,14 @@ class GatewayRunner:
             if not _status_adapter:
                 return
             try:
-                _status_metadata = dict(_status_thread_metadata or {})
-                _status_content = message
-                if source.platform == Platform.FEISHU and event_type == "context_pressure":
-                    _status_content = "本轮上下文较长，系统可能会自动整理历史内容。"
-                    _status_metadata["_hermes_stream"] = {
-                        "phase": "completed",
-                        "notice_kind": "context_pressure",
-                        "notice_text": message,
-                    }
+                _suppressed, _status_content, _status_metadata = self._build_status_notice_payload(
+                    source.platform,
+                    event_type,
+                    message,
+                    _status_thread_metadata,
+                )
+                if _suppressed:
+                    return
                 asyncio.run_coroutine_threadsafe(
                     _status_adapter.send(
                         _status_chat_id,
@@ -8409,10 +8475,19 @@ class GatewayRunner:
                     except Exception:
                         pass
                 try:
+                    _notice = self._format_long_running_notice(_elapsed_mins, _activity)
+                    _suppressed, _notice_content, _notice_metadata = self._build_status_notice_payload(
+                        source.platform,
+                        "lifecycle",
+                        _notice,
+                        _status_thread_metadata,
+                    )
+                    if _suppressed:
+                        continue
                     await _notify_adapter.send(
                         source.chat_id,
-                        self._format_long_running_notice(_elapsed_mins, _activity),
-                        metadata=_status_thread_metadata,
+                        _notice_content,
+                        metadata=_notice_metadata,
                     )
                 except Exception as _ne:
                     logger.debug("Long-running notification error: %s", _ne)
@@ -8501,12 +8576,23 @@ class GatewayRunner:
                             _elapsed_warn = int(_agent_warning // 60) or 1
                             _remaining_mins = int((_agent_timeout - _agent_warning) // 60) or 1
                             try:
-                                await _warn_adapter.send(
-                                    source.chat_id,
+                                _warn_text = (
                                     f"⚠️ 已有 {_elapsed_warn} 分钟无新进展。"
                                     f"如果代理仍未响应，约 {_remaining_mins} 分钟后会超时结束。"
-                                    f"你可以继续等待，或使用 /reset。",
-                                    metadata=_status_thread_metadata,
+                                    f"你可以继续等待，或使用 /reset。"
+                                )
+                                _suppressed, _warn_content, _warn_metadata = self._build_status_notice_payload(
+                                    source.platform,
+                                    "lifecycle",
+                                    _warn_text,
+                                    _status_thread_metadata,
+                                )
+                                if _suppressed:
+                                    continue
+                                await _warn_adapter.send(
+                                    source.chat_id,
+                                    _warn_content,
+                                    metadata=_warn_metadata,
                                 )
                             except Exception as _warn_err:
                                 logger.debug("Inactivity warning send error: %s", _warn_err)

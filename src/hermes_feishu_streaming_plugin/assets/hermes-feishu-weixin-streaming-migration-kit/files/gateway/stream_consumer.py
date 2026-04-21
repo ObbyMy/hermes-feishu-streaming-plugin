@@ -159,6 +159,15 @@ class GatewayStreamConsumer:
             return committed + current_text
         return f"{committed}\n\n{current_text}"
 
+    def _last_visible_display_text(self) -> str:
+        """Return the last visible body text without cursor/placeholder markers."""
+        text = self._last_sent_text or ""
+        cursor = self.cfg.cursor or ""
+        if cursor and text.endswith(cursor):
+            text = text[: -len(cursor)]
+        text = text.replace(_STATUS_ONLY_PLACEHOLDER, "")
+        return text.strip()
+
     def on_delta(self, text: str) -> None:
         """Thread-safe callback — called from the agent's worker thread.
 
@@ -308,6 +317,8 @@ class GatewayStreamConsumer:
                         self._last_sent_text = ""
 
                     display_text = self._compose_display_text(self._accumulated)
+                    if not display_text and status_changed and not status_reset_text:
+                        display_text = self._last_visible_display_text()
                     if (
                         not display_text
                         and getattr(self.adapter, "SUPPORTS_METADATA_ONLY_STREAM_UPDATES", False)

@@ -102,3 +102,62 @@ def test_format_long_running_notice_prefers_current_tool():
     )
 
     assert notice == "⏳ 仍在处理中（已耗时 10 分钟——轮次 35/90，当前工具：terminal）"
+
+
+def test_should_suppress_feishu_status_notice_for_retry_waits():
+    assert GatewayRunner._should_suppress_feishu_status_notice(
+        Platform.FEISHU,
+        "lifecycle",
+        "⏳ Retrying in 2.3s (attempt 1/3)...",
+    )
+    assert GatewayRunner._should_suppress_feishu_status_notice(
+        Platform.FEISHU,
+        "lifecycle",
+        "⏱️ Rate limit reached. Waiting 12s before retry (attempt 2/3)...",
+    )
+
+
+def test_should_suppress_feishu_status_notice_for_long_running_noise():
+    assert GatewayRunner._should_suppress_feishu_status_notice(
+        Platform.FEISHU,
+        "lifecycle",
+        "⏳ 仍在处理中（已耗时 9 分钟——轮次 25/90，工具已完成：terminal（0.3s））",
+    )
+    assert GatewayRunner._should_suppress_feishu_status_notice(
+        Platform.FEISHU,
+        "lifecycle",
+        "⚠️ 已有 15 分钟无新进展。如果代理仍未响应，约 15 分钟后会超时结束。你可以继续等待，或使用 /reset。",
+    )
+
+
+def test_should_not_suppress_context_pressure_notice_for_feishu():
+    assert not GatewayRunner._should_suppress_feishu_status_notice(
+        Platform.FEISHU,
+        "context_pressure",
+        "⚠️ 上下文：▰▰▰▰▰ 距离压缩阈值 80%",
+    )
+
+
+def test_build_status_notice_payload_turns_context_pressure_into_card():
+    runner = object.__new__(GatewayRunner)
+    runner.adapters = {
+        Platform.FEISHU: SimpleNamespace(STREAMING_CARD_METADATA_KEY="_hermes_stream")
+    }
+
+    suppressed, content, metadata = GatewayRunner._build_status_notice_payload(
+        runner,
+        Platform.FEISHU,
+        "context_pressure",
+        "⚠️ 上下文：▰▰▰▰▰ 距离压缩阈值 80%\n上下文即将触发压缩（阈值：窗口容量的 50%）。",
+        {"thread_id": "omt_1"},
+    )
+
+    assert suppressed is False
+    assert content == "本轮上下文较长，系统可能会自动整理历史内容。"
+    assert metadata["thread_id"] == "omt_1"
+    assert metadata["_hermes_stream"]["notice_kind"] == "context_pressure"
+
+
+def test_should_reset_embedded_status_text_only_before_any_stream_output():
+    assert GatewayRunner._should_reset_embedded_status_text(SimpleNamespace(already_sent=False)) is True
+    assert GatewayRunner._should_reset_embedded_status_text(SimpleNamespace(already_sent=True)) is False

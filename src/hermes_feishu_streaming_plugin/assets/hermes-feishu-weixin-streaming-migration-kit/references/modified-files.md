@@ -66,6 +66,7 @@ Key behavior added or adjusted:
 - introduces transport modes for tool progress: `embedded`, `standalone`, `off`;
 - embeds tool status into the active Feishu stream card;
 - suppresses duplicate standalone progress on Weixin;
+- suppresses Feishu standalone lifecycle chatter such as long-running / retry / rate-limit wait notices;
 - injects metadata for session notices and context-pressure notices;
 - aligns commentary / stream-consumer orchestration with the card workflow.
 

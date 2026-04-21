@@ -319,6 +319,39 @@ class TestStatusOnlyMetadataStreaming:
         assert edited["content"] == "\u200b"
         assert edited["metadata"]["_hermes_stream"]["tool_status"]["text"] == '💻 terminal: "pwd"'
 
+    @pytest.mark.asyncio
+    async def test_status_update_without_reset_preserves_existing_stream_text(self):
+        adapter = MagicMock()
+        send_result = SimpleNamespace(success=True, message_id="msg_1")
+        edit_result = SimpleNamespace(success=True)
+        adapter.send = AsyncMock(return_value=send_result)
+        edit_calls = []
+
+        async def _edit_message(chat_id, message_id, content, metadata=None):
+            edit_calls.append({
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "content": content,
+                "metadata": metadata,
+            })
+            return edit_result
+
+        adapter.edit_message = _edit_message
+        adapter.MAX_MESSAGE_LENGTH = 4096
+        adapter.SUPPORTS_METADATA_ONLY_STREAM_UPDATES = True
+
+        consumer = GatewayStreamConsumer(adapter, "chat_123", StreamConsumerConfig(edit_interval=0.01, buffer_threshold=1))
+        await consumer._send_or_edit("正在查询资料", final=False)
+        consumer.on_status('💻 terminal: "pwd"')
+        consumer.finish()
+
+        await consumer.run()
+
+        assert edit_calls
+        edited = edit_calls[0]
+        assert edited["content"].startswith("正在查询资料")
+        assert edited["metadata"]["_hermes_stream"]["tool_status"]["text"] == '💻 terminal: "pwd"'
+
 
 class TestSegmentBreakOnToolBoundary:
     """Verify that on_delta(None) finalizes the current message and starts a
