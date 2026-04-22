@@ -65,11 +65,10 @@ LOCATOR_SPECS: list[LocatorSpec] = [
     ),
     LocatorSpec(
         path="gateway/run.py",
-        purpose="网关主流程：stream consumer 接线、tool progress 传输模式、Feishu session/context metadata 注入",
+        purpose="网关主流程：stream consumer 接线、Feishu tool progress 嵌入、session/context metadata 注入",
         patterns=[
             "from gateway.stream_consumer import GatewayStreamConsumer, StreamConsumerConfig",
             '"tool_status": {"text": status_text}',
-            "progress_transport",
             "GatewayStreamConsumer(",
         ],
     ),
@@ -80,17 +79,6 @@ LOCATOR_SPECS: list[LocatorSpec] = [
             "_STATUS_ONLY_PLACEHOLDER = \"\\u200b\"",
             "class GatewayStreamConsumer:",
             "def on_status(",
-            "status_changed = status_update is not None",
-        ],
-    ),
-    LocatorSpec(
-        path="gateway/config.py",
-        purpose="gateway 配置桥接：session_reset 的 default/platform/type 覆盖注入",
-        patterns=[
-            'sr = yaml_cfg.get("session_reset")',
-            'gw_data["default_reset_policy"]',
-            'gw_data["reset_by_platform"]',
-            'gw_data["reset_by_type"]',
         ],
     ),
     LocatorSpec(
@@ -102,14 +90,6 @@ LOCATOR_SPECS: list[LocatorSpec] = [
         ],
     ),
     LocatorSpec(
-        path="hermes_cli/gateway.py",
-        purpose="CLI / gateway 入口补充：与该迁移配套的小型配置/入口调整",
-        patterns=[
-            "def run_gateway(",
-            "gateway.run",
-        ],
-    ),
-    LocatorSpec(
         path="tests/gateway/test_stream_consumer.py",
         purpose="验证 stream_consumer 的 status-only / metadata-only / paragraph-inline 逻辑",
         patterns=[
@@ -118,19 +98,19 @@ LOCATOR_SPECS: list[LocatorSpec] = [
         ],
     ),
     LocatorSpec(
-        path="tests/gateway/test_run_progress_topics.py",
-        purpose="验证 gateway/run 中 Feishu embedded tool progress 与 Weixin 去重路径",
-        patterns=[
-            "embedded",
-            "standalone_tool_progress",
-        ],
-    ),
-    LocatorSpec(
         path="tests/gateway/test_feishu.py",
         purpose="验证 Feishu adapter 的发送/编辑/fallback/card 路径",
         patterns=[
             "FeishuAdapter",
             "interactive",
+        ],
+    ),
+    LocatorSpec(
+        path="tests/gateway/test_feishu_session_notices.py",
+        purpose="验证 Feishu 的 session/context notice 卡片行为",
+        patterns=[
+            "session notice",
+            "context pressure",
         ],
     ),
 ]

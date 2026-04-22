@@ -1,0 +1,1 @@
+/home/jiangshuo/.hermes/projects/hermes-feishu-streaming-plugin/src/hermes_feishu_streaming_plugin/assets/hermes-feishu-streaming-migration-kit

@@ -27,7 +27,7 @@ def test_export_bundle_copies_expected_files(tmp_path: Path):
     exported = export_bundle(tmp_path)
     assert exported.name == BUNDLE_NAME
     assert (exported / "SKILL.md").exists()
-    assert (exported / "references" / "migration.patch").exists()
+    assert (exported / "references" / "verification.md").exists()
     assert (exported / "files" / "gateway" / "platforms" / "feishu.py").exists()
 
 

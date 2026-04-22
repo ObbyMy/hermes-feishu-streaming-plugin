@@ -1,0 +1,33 @@
+{
+  "bundle_name": "hermes-feishu-streaming-migration-kit",
+  "targets": [
+    {
+      "path": "gateway/platforms/feishu.py",
+      "purpose": "Feishu adapter streaming/edit/card behavior"
+    },
+    {
+      "path": "gateway/run.py",
+      "purpose": "Feishu stream consumer wiring and embedded tool progress"
+    },
+    {
+      "path": "gateway/stream_consumer.py",
+      "purpose": "status-only and metadata-only updates"
+    },
+    {
+      "path": "gateway/display_config.py",
+      "purpose": "Feishu display defaults"
+    },
+    {
+      "path": "tests/gateway/test_stream_consumer.py",
+      "purpose": "regression coverage for stream consumer"
+    },
+    {
+      "path": "tests/gateway/test_feishu.py",
+      "purpose": "regression coverage for Feishu adapter"
+    },
+    {
+      "path": "tests/gateway/test_feishu_session_notices.py",
+      "purpose": "regression coverage for Feishu notice cards"
+    }
+  ]
+}

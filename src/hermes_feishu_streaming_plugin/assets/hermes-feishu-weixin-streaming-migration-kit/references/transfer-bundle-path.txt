@@ -1,1 +1,0 @@
-./transfer/hermes-feishu-weixin-streaming-migration-kit

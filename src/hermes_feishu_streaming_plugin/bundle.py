@@ -8,7 +8,7 @@ import shutil
 from typing import Iterable
 
 PACKAGE = "hermes_feishu_streaming_plugin"
-BUNDLE_NAME = "hermes-feishu-weixin-streaming-migration-kit"
+BUNDLE_NAME = "hermes-feishu-streaming-migration-kit"
 
 
 @dataclass(frozen=True)

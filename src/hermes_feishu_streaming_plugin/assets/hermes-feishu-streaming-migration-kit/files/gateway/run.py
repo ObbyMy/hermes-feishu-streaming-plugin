@@ -2208,13 +2208,6 @@ class GatewayRunner:
                 return None
             return WeComAdapter(config)
 
-        elif platform == Platform.WEIXIN:
-            from gateway.platforms.weixin import WeixinAdapter, check_weixin_requirements
-            if not check_weixin_requirements():
-                logger.warning("Weixin: aiohttp/cryptography not installed")
-                return None
-            return WeixinAdapter(config)
-
         elif platform == Platform.MATTERMOST:
             from gateway.platforms.mattermost import MattermostAdapter, check_mattermost_requirements
             if not check_mattermost_requirements():
@@ -7968,15 +7961,6 @@ class GatewayRunner:
                         if platform_key == "feishu":
                             progress_transport[0] = "embedded" if tool_progress_enabled else "off"
                             _embedded_progress_consumer[0] = _stream_consumer
-                        elif platform_key == "weixin":
-                            # Weixin cannot edit messages, so any streamed preview
-                            # or standalone tool progress turns into duplicate bubbles.
-                            # Disable gateway-side streaming for this turn and let the
-                            # normal final send deliver a single completed reply.
-                            progress_transport[0] = "off"
-                            suppress_interim_stream_commentary[0] = True
-                            _stream_delta_cb = None
-                            stream_consumer_holder[0] = None
                 except Exception as _sc_err:
                     logger.debug("Could not set up stream consumer: %s", _sc_err)
 

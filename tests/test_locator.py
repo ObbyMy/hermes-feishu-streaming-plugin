@@ -16,10 +16,8 @@ def test_locate_bundle_targets_matches_embedded_files(tmp_path: Path):
     repo = tmp_path / "repo"
     repo.mkdir()
 
-    # minimal embedded-like structure
     (repo / "gateway" / "platforms").mkdir(parents=True)
     (repo / "gateway").mkdir(exist_ok=True)
-    (repo / "hermes_cli").mkdir(exist_ok=True)
     (repo / "tests" / "gateway").mkdir(parents=True)
 
     (repo / "gateway" / "platforms" / "feishu.py").write_text(
@@ -39,7 +37,6 @@ def test_locate_bundle_targets_matches_embedded_files(tmp_path: Path):
             [
                 "from gateway.stream_consumer import GatewayStreamConsumer, StreamConsumerConfig",
                 '"tool_status": {"text": status_text}',
-                "progress_transport",
                 "GatewayStreamConsumer(",
             ]
         ),
@@ -51,18 +48,6 @@ def test_locate_bundle_targets_matches_embedded_files(tmp_path: Path):
                 '_STATUS_ONLY_PLACEHOLDER = "\\u200b"',
                 "class GatewayStreamConsumer:",
                 "def on_status(",
-                "status_changed = status_update is not None",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (repo / "gateway" / "config.py").write_text(
-        "\n".join(
-            [
-                'sr = yaml_cfg.get("session_reset")',
-                'gw_data["default_reset_policy"]',
-                'gw_data["reset_by_platform"]',
-                'gw_data["reset_by_type"]',
             ]
         ),
         encoding="utf-8",
@@ -76,26 +61,22 @@ def test_locate_bundle_targets_matches_embedded_files(tmp_path: Path):
         ),
         encoding="utf-8",
     )
-    (repo / "hermes_cli" / "gateway.py").write_text(
-        "\n".join(["def run_gateway(", "gateway.run"]),
-        encoding="utf-8",
-    )
     (repo / "tests" / "gateway" / "test_stream_consumer.py").write_text(
         "\n".join(["GatewayStreamConsumer", "status_only_placeholder"]),
-        encoding="utf-8",
-    )
-    (repo / "tests" / "gateway" / "test_run_progress_topics.py").write_text(
-        "\n".join(["embedded", "standalone_tool_progress"]),
         encoding="utf-8",
     )
     (repo / "tests" / "gateway" / "test_feishu.py").write_text(
         "\n".join(["FeishuAdapter", "interactive"]),
         encoding="utf-8",
     )
+    (repo / "tests" / "gateway" / "test_feishu_session_notices.py").write_text(
+        "\n".join(["session notice", "context pressure"]),
+        encoding="utf-8",
+    )
 
     report = locate_bundle_targets(repo)
     payload = json.loads(report.to_json())
-    assert payload["matched_files"] == 9
+    assert payload["matched_files"] == 7
     assert payload["missing_files"] == 0
     assert payload["partial_files"] == 0
 
@@ -104,4 +85,4 @@ def test_locate_bundle_targets_marks_missing_files(tmp_path: Path):
     report = locate_bundle_targets(tmp_path)
     payload = json.loads(report.to_json())
     assert payload["matched_files"] == 0
-    assert payload["missing_files"] == 9
+    assert payload["missing_files"] == 7
